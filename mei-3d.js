@@ -5,9 +5,7 @@ const canvas = document.getElementById("mei3dCanvas");
 const shell = document.querySelector(".mei-3d-shell");
 const loading = document.getElementById("mei3dLoading");
 
-if (!canvas || !shell) {
-  throw new Error("Mei 3D canvas not found");
-}
+if (!canvas || !shell) throw new Error("Mei 3D canvas not found");
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -23,25 +21,25 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(28, 1, 0.01, 100);
 
-const hemi = new THREE.HemisphereLight(0xf8f6ff, 0x31384d, 2.35);
+const hemi = new THREE.HemisphereLight(0xf8f6ff, 0x31384d, 2.15);
 scene.add(hemi);
 
-const key = new THREE.DirectionalLight(0xffffff, 3.1);
+const key = new THREE.DirectionalLight(0xffffff, 2.8);
 key.position.set(3.2, 5.5, 4.5);
 key.castShadow = true;
 scene.add(key);
 
-const fill = new THREE.DirectionalLight(0x8aa8ff, 1.25);
-fill.position.set(-4, 2.6, 3);
+const fill = new THREE.DirectionalLight(0x91adff, 1.15);
+fill.position.set(-4, 2.8, 3);
 scene.add(fill);
 
-const rim = new THREE.DirectionalLight(0xb986ff, 1.15);
-rim.position.set(2, 3.4, -4);
+const rim = new THREE.DirectionalLight(0xb986ff, 1.0);
+rim.position.set(2, 3.6, -4);
 scene.add(rim);
 
 const floor = new THREE.Mesh(
   new THREE.CircleGeometry(1.4, 48),
-  new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.19 })
+  new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.16 })
 );
 floor.rotation.x = -Math.PI / 2;
 floor.position.y = 0.006;
@@ -54,11 +52,18 @@ let activeAction = null;
 let stateName = "idle";
 let modelReady = false;
 let procedural = true;
+let speaking = false;
+let modelSize = new THREE.Vector3(1, 3, 1);
+let lookX = 0;
+let lookY = 0;
+
 const clock = new THREE.Clock();
 const rig = {};
 const baseQuat = {};
+const targetQuat = {};
 const tempEuler = new THREE.Euler();
 const tempQuat = new THREE.Quaternion();
+const tmpVec = new THREE.Vector3();
 
 const boneMap = {
   root: "root",
@@ -67,6 +72,8 @@ const boneMap = {
   neck: "neck03",
   head: "head",
   jaw: "jaw",
+  clavicleL: "clavicle.L",
+  clavicleR: "clavicle.R",
   upperArmL: "upperarm01.L",
   lowerArmL: "lowerarm01.L",
   wristL: "wrist.L",
@@ -81,6 +88,24 @@ const boneMap = {
   footR: "foot.R"
 };
 
+const naturalPose = {
+  clavicleL: [0, 0, 0.035],
+  clavicleR: [0, 0, -0.035],
+  upperArmL: [-0.03, 0.04, 0.34],
+  lowerArmL: [0.02, 0.02, 0.08],
+  wristL: [0, 0.015, 0.025],
+  upperArmR: [-0.03, -0.04, -0.34],
+  lowerArmR: [0.02, -0.02, -0.08],
+  wristR: [0, -0.015, -0.025],
+  thighL: [0.01, 0, 0.012],
+  thighR: [-0.01, 0, -0.012],
+  chest: [0.005, 0, 0],
+  upperChest: [-0.004, 0, 0],
+  neck: [0, 0, 0],
+  head: [0, 0, 0],
+  jaw: [0, 0, 0]
+};
+
 const clipPatterns = {
   idle: /idle|stand|breath/i,
   wave: /wave|hello|greet/i,
@@ -89,7 +114,7 @@ const clipPatterns = {
   sleep: /sleep|rest/i,
   celebrate: /celebr|cheer|victory|happy/i,
   listen: /listen|idle|stand/i,
-  speak: /talk|speak|idle|stand/i
+  speak: /talk|speak/i
 };
 
 function updateSize() {
@@ -98,37 +123,49 @@ function updateSize() {
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
+  if (modelReady) fitCamera();
+}
+
+function fitCamera() {
+  if (!model) return;
+  const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+  const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * Math.max(camera.aspect, 0.2));
+  const fitHeight = (modelSize.y * 0.5) / Math.tan(verticalFov / 2);
+  const fitWidth = (modelSize.x * 0.5) / Math.tan(horizontalFov / 2);
+  const distance = Math.max(fitHeight, fitWidth) * 1.08;
+  const focusY = modelSize.y * 0.51;
+
+  camera.position.set(0, focusY, distance);
+  camera.lookAt(0, focusY, 0);
+  camera.near = Math.max(0.01, distance / 100);
+  camera.far = Math.max(50, distance * 8);
+  camera.updateProjectionMatrix();
 }
 
 function normalizeModel(root) {
   root.updateMatrixWorld(true);
   let box = new THREE.Box3().setFromObject(root);
   const size = box.getSize(new THREE.Vector3());
+
   if (size.y > 0) {
     const targetHeight = 3.65;
-    const scale = targetHeight / size.y;
-    root.scale.setScalar(scale);
+    root.scale.setScalar(targetHeight / size.y);
   }
 
   root.updateMatrixWorld(true);
   box = new THREE.Box3().setFromObject(root);
   const center = box.getCenter(new THREE.Vector3());
+
   root.position.x -= center.x;
   root.position.z -= center.z;
   root.position.y -= box.min.y;
 
   root.updateMatrixWorld(true);
   box = new THREE.Box3().setFromObject(root);
-  const finalSize = box.getSize(new THREE.Vector3());
-  const bodyY = finalSize.y * 0.51;
+  modelSize = box.getSize(new THREE.Vector3());
 
-  camera.position.set(0, bodyY, finalSize.y * 1.46);
-  camera.lookAt(0, bodyY, 0);
-  camera.near = Math.max(0.01, finalSize.y / 100);
-  camera.far = finalSize.y * 20;
-  camera.updateProjectionMatrix();
-
-  floor.scale.setScalar(Math.max(1, finalSize.x * 0.62));
+  floor.scale.setScalar(Math.max(1, modelSize.x * 0.62));
+  fitCamera();
 }
 
 function setupRig() {
@@ -137,31 +174,136 @@ function setupRig() {
     if (!bone || !bone.isBone) return;
     rig[role] = bone;
     baseQuat[role] = bone.quaternion.clone();
+    targetQuat[role] = bone.quaternion.clone();
   });
 }
 
-function resetPose() {
-  Object.keys(rig).forEach(role => {
-    if (baseQuat[role]) rig[role].quaternion.copy(baseQuat[role]);
+function addPose(map, role, x = 0, y = 0, z = 0) {
+  if (!map[role]) map[role] = [0, 0, 0];
+  map[role][0] += x;
+  map[role][1] += y;
+  map[role][2] += z;
+}
+
+function desiredPose(name, t) {
+  const pose = {};
+  Object.entries(naturalPose).forEach(([role, value]) => {
+    pose[role] = [...value];
   });
+
+  const breathe = Math.sin(t * 1.75);
+  const sway = Math.sin(t * 0.72);
+  const beat = Math.sin(t * 5.4);
+  const fast = Math.sin(t * 8.1);
+
+  // Always-on organic micro motion.
+  addPose(pose, "chest", 0.010 * breathe, 0.006 * sway, 0.009 * breathe);
+  addPose(pose, "upperChest", -0.006 * breathe, 0.004 * sway, -0.005 * breathe);
+  addPose(pose, "neck", 0.005 * breathe, lookX * 0.025, 0.004 * sway);
+  addPose(pose, "head", lookY * 0.035, lookX * 0.07 + 0.012 * sway, 0.012 * Math.sin(t * 0.47));
+  addPose(pose, "upperArmL", 0, 0, 0.012 * breathe);
+  addPose(pose, "upperArmR", 0, 0, -0.012 * breathe);
+
+  switch (name) {
+    case "wave":
+      addPose(pose, "upperArmR", -0.20, -0.18, -0.95);
+      addPose(pose, "lowerArmR", -0.15, -0.10, -0.90 + fast * 0.28);
+      addPose(pose, "wristR", 0.02, fast * 0.24, fast * 0.16);
+      addPose(pose, "head", 0, -0.03, -0.045);
+      addPose(pose, "chest", 0, 0, -0.028);
+      break;
+
+    case "think":
+      addPose(pose, "upperArmR", -0.10, -0.26, -0.64);
+      addPose(pose, "lowerArmR", -0.16, -0.10, -1.04);
+      addPose(pose, "wristR", 0.14, 0.05, -0.05);
+      addPose(pose, "head", 0.04, -0.06, 0.12 + sway * 0.02);
+      addPose(pose, "chest", 0, 0, -0.035);
+      break;
+
+    case "dance":
+      addPose(pose, "chest", 0, beat * 0.09, beat * 0.13);
+      addPose(pose, "upperChest", 0, -beat * 0.07, beat * 0.07);
+      addPose(pose, "head", 0, -beat * 0.11, -beat * 0.07);
+      addPose(pose, "upperArmR", -0.20, -0.12, -0.62 - sway * 0.32);
+      addPose(pose, "lowerArmR", 0, 0, -0.42 + fast * 0.24);
+      addPose(pose, "upperArmL", -0.20, 0.12, 0.62 + sway * 0.32);
+      addPose(pose, "lowerArmL", 0, 0, 0.42 - fast * 0.24);
+      addPose(pose, "thighR", beat * 0.16, 0, -0.07);
+      addPose(pose, "thighL", -beat * 0.16, 0, 0.07);
+      addPose(pose, "shinR", Math.max(0, -beat) * 0.18, 0, 0);
+      addPose(pose, "shinL", Math.max(0, beat) * 0.18, 0, 0);
+      break;
+
+    case "celebrate":
+      addPose(pose, "upperArmR", -0.26, -0.09, -1.20 + sway * 0.08);
+      addPose(pose, "lowerArmR", 0, 0, -0.30 + fast * 0.12);
+      addPose(pose, "upperArmL", -0.26, 0.09, 1.20 - sway * 0.08);
+      addPose(pose, "lowerArmL", 0, 0, 0.30 - fast * 0.12);
+      addPose(pose, "chest", 0, beat * 0.04, beat * 0.05);
+      addPose(pose, "head", 0, 0, -beat * 0.04);
+      break;
+
+    case "sleep":
+      addPose(pose, "head", 0.07, 0, 0.20 + sway * 0.012);
+      addPose(pose, "neck", 0.025, 0, 0.07);
+      addPose(pose, "chest", 0, 0, 0.05);
+      addPose(pose, "upperArmR", 0, 0, 0.12);
+      addPose(pose, "upperArmL", 0, 0, -0.12);
+      break;
+
+    case "listen":
+      addPose(pose, "head", 0, 0.035, -0.09 + sway * 0.016);
+      addPose(pose, "neck", 0, 0, -0.03);
+      break;
+
+    case "speak":
+      // Speaking is also handled as an overlay below.
+      break;
+
+    case "idle":
+    default:
+      break;
+  }
+
+  if (speaking || name === "speak") {
+    const speechBeat = (Math.sin(t * 13.0) + Math.sin(t * 7.4) * 0.45 + 1.45) / 2.9;
+    const phrase = Math.sin(t * 2.25);
+    const gesture = Math.sin(t * 1.18);
+    const gestureGate = Math.max(0, Math.sin(t * 0.82));
+
+    addPose(pose, "jaw", 0.035 + speechBeat * 0.095, 0, 0);
+    addPose(pose, "head", 0.012 * phrase, 0.020 * gesture, 0.012 * Math.sin(t * 1.55));
+    addPose(pose, "neck", -0.005 * phrase, 0.008 * gesture, 0);
+    addPose(pose, "chest", 0.010 * phrase, 0.012 * gesture, 0.008 * phrase);
+    addPose(pose, "upperChest", -0.006 * phrase, -0.010 * gesture, 0);
+
+    // Gentle conversational hand gestures that come and go instead of constant flapping.
+    addPose(pose, "upperArmR", -0.025 * gestureGate, -0.02, -0.10 * gestureGate);
+    addPose(pose, "lowerArmR", 0.02 * gestureGate, 0.02, -0.18 * gestureGate);
+    addPose(pose, "wristR", 0, 0.05 * gesture, -0.04 * gestureGate);
+
+    const leftGate = Math.max(0, Math.sin(t * 0.82 + Math.PI));
+    addPose(pose, "upperArmL", -0.018 * leftGate, 0.015, 0.07 * leftGate);
+    addPose(pose, "lowerArmL", 0.015 * leftGate, -0.015, 0.11 * leftGate);
+  }
+
+  return pose;
 }
 
-function rotate(role, x = 0, y = 0, z = 0) {
-  const bone = rig[role];
-  const base = baseQuat[role];
-  if (!bone || !base) return;
-  bone.quaternion.copy(base);
-  tempEuler.set(x, y, z, "XYZ");
-  tempQuat.setFromEuler(tempEuler);
-  bone.quaternion.multiply(tempQuat);
-}
+function applyPose(pose, dt) {
+  const alpha = 1 - Math.exp(-Math.max(dt, 0.001) * 10.5);
 
-function offset(role, x = 0, y = 0, z = 0) {
-  const bone = rig[role];
-  if (!bone) return;
-  tempEuler.set(x, y, z, "XYZ");
-  tempQuat.setFromEuler(tempEuler);
-  bone.quaternion.multiply(tempQuat);
+  Object.entries(rig).forEach(([role, bone]) => {
+    const base = baseQuat[role];
+    if (!base) return;
+
+    const [x, y, z] = pose[role] || naturalPose[role] || [0, 0, 0];
+    tempEuler.set(x, y, z, "XYZ");
+    tempQuat.setFromEuler(tempEuler);
+    targetQuat[role].copy(base).multiply(tempQuat);
+    bone.quaternion.slerp(targetQuat[role], alpha);
+  });
 }
 
 function findClip(name) {
@@ -173,10 +315,10 @@ function findClip(name) {
 
 function useNativeClip(name) {
   const clip = findClip(name);
-  if (!clip) return false;
+  if (!clip || speaking) return false;
 
   procedural = false;
-  if (activeAction) activeAction.fadeOut(0.18);
+  if (activeAction) activeAction.fadeOut(0.15);
 
   activeAction = mixer.clipAction(clip);
   activeAction.reset();
@@ -184,89 +326,12 @@ function useNativeClip(name) {
   activeAction.setEffectiveWeight(1);
   activeAction.setEffectiveTimeScale(1);
   activeAction.setLoop(
-    ["idle", "listen", "speak", "sleep"].includes(name)
-      ? THREE.LoopRepeat
-      : THREE.LoopOnce,
+    ["idle", "listen", "sleep"].includes(name) ? THREE.LoopRepeat : THREE.LoopOnce,
     Infinity
   );
-  activeAction.clampWhenFinished = !["idle", "listen", "speak", "sleep"].includes(name);
-  activeAction.fadeIn(0.18).play();
+  activeAction.clampWhenFinished = !["idle", "listen", "sleep"].includes(name);
+  activeAction.fadeIn(0.16).play();
   return true;
-}
-
-function applyProceduralPose(name, t) {
-  resetPose();
-  const slow = Math.sin(t * 2.1);
-  const beat = Math.sin(t * 5.8);
-  const fast = Math.sin(t * 8.4);
-
-  switch (name) {
-    case "wave":
-      rotate("upperArmR", -0.25, -0.28, -1.15);
-      rotate("lowerArmR", -0.18, -0.16, -1.08 + fast * 0.34);
-      rotate("wristR", 0, fast * 0.28, fast * 0.18);
-      rotate("head", 0, -0.05, -0.055);
-      offset("chest", 0, 0, -0.025);
-      break;
-
-    case "think":
-      rotate("upperArmR", -0.15, -0.35, -0.85);
-      rotate("lowerArmR", -0.18, -0.15, -1.22);
-      rotate("wristR", 0.16, 0.05, -0.08);
-      rotate("head", 0.04, -0.08, 0.13 + slow * 0.025);
-      rotate("chest", 0, 0, -0.04);
-      break;
-
-    case "dance":
-      rotate("chest", 0, beat * 0.09, beat * 0.12);
-      rotate("upperChest", 0, -beat * 0.07, beat * 0.07);
-      rotate("head", 0, -beat * 0.12, -beat * 0.08);
-      rotate("upperArmR", -0.25, -0.2, -0.95 - slow * 0.4);
-      rotate("lowerArmR", 0, 0, -0.5 + fast * 0.25);
-      rotate("upperArmL", -0.25, 0.2, 0.95 + slow * 0.4);
-      rotate("lowerArmL", 0, 0, 0.5 - fast * 0.25);
-      rotate("thighR", beat * 0.18, 0, -0.08);
-      rotate("thighL", -beat * 0.18, 0, 0.08);
-      rotate("shinR", Math.max(0, -beat) * 0.22, 0, 0);
-      rotate("shinL", Math.max(0, beat) * 0.22, 0, 0);
-      break;
-
-    case "celebrate":
-      rotate("upperArmR", -0.32, -0.12, -1.5 + slow * 0.1);
-      rotate("lowerArmR", 0, 0, -0.4 + fast * 0.13);
-      rotate("upperArmL", -0.32, 0.12, 1.5 - slow * 0.1);
-      rotate("lowerArmL", 0, 0, 0.4 - fast * 0.13);
-      rotate("chest", 0, beat * 0.045, beat * 0.055);
-      rotate("head", 0, 0, -beat * 0.045);
-      break;
-
-    case "sleep":
-      rotate("head", 0.08, 0, 0.2 + slow * 0.012);
-      rotate("neck", 0.03, 0, 0.08);
-      rotate("chest", 0, 0, 0.055);
-      rotate("upperArmR", 0, 0, -0.14);
-      rotate("upperArmL", 0, 0, 0.14);
-      break;
-
-    case "listen":
-      rotate("head", 0, 0.04, -0.105 + slow * 0.018);
-      rotate("neck", 0, 0, -0.035);
-      rotate("chest", 0, 0, slow * 0.012);
-      break;
-
-    case "speak":
-      rotate("head", 0, fast * 0.012, fast * 0.013);
-      rotate("chest", 0, 0, slow * 0.009);
-      rotate("jaw", 0.04 + (fast + 1) * 0.025, 0, 0);
-      break;
-
-    case "idle":
-    default:
-      rotate("chest", 0, 0, slow * 0.009);
-      rotate("upperChest", 0, 0, -slow * 0.005);
-      rotate("head", 0, slow * 0.012, Math.sin(t * 0.72) * 0.012);
-      break;
-  }
 }
 
 function setState(name = "idle") {
@@ -274,11 +339,83 @@ function setState(name = "idle") {
   if (!modelReady) return;
 
   if (activeAction) {
-    activeAction.stop();
+    activeAction.fadeOut(0.12);
     activeAction = null;
   }
-  resetPose();
   procedural = !useNativeClip(name);
+}
+
+function setSpeaking(active) {
+  speaking = Boolean(active);
+  if (speaking && activeAction) {
+    activeAction.stop();
+    activeAction = null;
+    procedural = true;
+  }
+}
+
+function projectedBounds() {
+  if (!model) return null;
+  model.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(model);
+  const min = new THREE.Vector3(Infinity, Infinity, Infinity);
+  const max = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+
+  for (const x of [box.min.x, box.max.x]) {
+    for (const y of [box.min.y, box.max.y]) {
+      for (const z of [box.min.z, box.max.z]) {
+        tmpVec.set(x, y, z).project(camera);
+        min.x = Math.min(min.x, tmpVec.x);
+        min.y = Math.min(min.y, tmpVec.y);
+        min.z = Math.min(min.z, tmpVec.z);
+        max.x = Math.max(max.x, tmpVec.x);
+        max.y = Math.max(max.y, tmpVec.y);
+        max.z = Math.max(max.z, tmpVec.z);
+      }
+    }
+  }
+
+  return {
+    min: { x: min.x, y: min.y, z: min.z },
+    max: { x: max.x, y: max.y, z: max.z }
+  };
+}
+
+function quaternionSnapshot(role) {
+  const bone = rig[role];
+  if (!bone) return null;
+  return {
+    x: bone.quaternion.x,
+    y: bone.quaternion.y,
+    z: bone.quaternion.z,
+    w: bone.quaternion.w
+  };
+}
+
+function diagnostics() {
+  const required = ["head", "jaw", "chest", "upperArmL", "upperArmR", "thighL", "thighR"];
+  return {
+    ready: modelReady,
+    state: stateName,
+    speaking,
+    requiredBonesPresent: required.every(role => Boolean(rig[role])),
+    missingBones: required.filter(role => !rig[role]),
+    bones: Object.keys(rig),
+    animations: model?.userData?.clips?.map(a => a.name) || [],
+    modelSize: { x: modelSize.x, y: modelSize.y, z: modelSize.z },
+    camera: {
+      fov: camera.fov,
+      aspect: camera.aspect,
+      position: { x: camera.position.x, y: camera.position.y, z: camera.position.z }
+    },
+    projectedBounds: projectedBounds(),
+    snapshots: {
+      head: quaternionSnapshot("head"),
+      jaw: quaternionSnapshot("jaw"),
+      upperArmR: quaternionSnapshot("upperArmR"),
+      thighR: quaternionSnapshot("thighR")
+    }
+  };
 }
 
 function render() {
@@ -287,10 +424,10 @@ function render() {
   const elapsed = clock.elapsedTime;
 
   if (modelReady) {
-    if (!procedural && mixer) {
+    if (!procedural && mixer && !speaking) {
       mixer.update(dt);
     } else {
-      applyProceduralPose(stateName, elapsed);
+      applyPose(desiredPose(stateName, elapsed), dt);
     }
   }
 
@@ -305,15 +442,16 @@ loader.load(
     model.userData.clips = gltf.animations || [];
 
     model.traverse(obj => {
-      if (obj.isMesh) {
-        obj.castShadow = true;
-        obj.receiveShadow = true;
-        obj.frustumCulled = true;
-        if (obj.material) {
-          obj.material.side = THREE.FrontSide;
-          obj.material.needsUpdate = true;
-        }
-      }
+      if (!obj.isMesh) return;
+      obj.castShadow = true;
+      obj.receiveShadow = true;
+      obj.frustumCulled = true;
+
+      const materials = Array.isArray(obj.material) ? obj.material : [obj.material];
+      materials.filter(Boolean).forEach(material => {
+        material.side = THREE.FrontSide;
+        material.needsUpdate = true;
+      });
     });
 
     scene.add(model);
@@ -322,16 +460,15 @@ loader.load(
 
     mixer = new THREE.AnimationMixer(model);
     modelReady = true;
+    window.__MEI_3D_READY__ = true;
 
     if (loading) loading.classList.add("ready");
     shell.classList.add("is-ready");
 
     setState(stateName);
+
     window.dispatchEvent(new CustomEvent("mei3d-ready", {
-      detail: {
-        bones: Object.keys(rig),
-        animations: (gltf.animations || []).map(a => a.name)
-      }
+      detail: diagnostics()
     }));
   },
   progress => {
@@ -341,6 +478,7 @@ loader.load(
   },
   error => {
     console.error("Mei GLB load failed", error);
+    window.__MEI_3D_READY__ = false;
     if (loading) {
       loading.classList.add("error");
       loading.textContent = "No se pudo cargar el cuerpo 3D";
@@ -351,9 +489,19 @@ loader.load(
 
 window.Mei3D = {
   setState,
+  setSpeaking,
   isReady: () => modelReady,
-  getAnimations: () => model?.userData?.clips?.map(a => a.name) || []
+  getAnimations: () => model?.userData?.clips?.map(a => a.name) || [],
+  getDiagnostics: diagnostics
 };
+
+window.addEventListener("pointermove", event => {
+  const rect = shell.getBoundingClientRect();
+  const x = ((event.clientX - rect.left) / Math.max(rect.width, 1)) * 2 - 1;
+  const y = ((event.clientY - rect.top) / Math.max(rect.height, 1)) * 2 - 1;
+  lookX = THREE.MathUtils.clamp(x, -1, 1);
+  lookY = THREE.MathUtils.clamp(-y, -1, 1);
+}, { passive: true });
 
 window.addEventListener("resize", updateSize);
 new ResizeObserver(updateSize).observe(shell);
