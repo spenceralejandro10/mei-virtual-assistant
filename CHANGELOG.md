@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.0-beta — 2026-09-21
+
+Migración del prototipo 2D/CSS a un cuerpo 3D riggeado real.
+
+### Añadido
+- Integración del modelo Yinn como cuerpo 3D de Mei mediante Sketchfab Viewer API.
+- Descubrimiento automático de huesos/nodos del rig.
+- Control procedural de cabeza, torso, brazos y piernas.
+- Soporte para animaciones nativas cuando el modelo las expone.
+- Estados 3D para saludo, pensamiento, baile, descanso, celebración, escucha y habla.
+- Indicador de carga del cuerpo 3D y fallback de error.
+
+### Cambiado
+- Mei deja de usar el cuerpo CSS provisional como representación principal.
+- Versión actualizada a `0.2.0-beta`.
+
+
 ## 0.1.0-beta — 2026-09-21
 
 Primera beta funcional.
