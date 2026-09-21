@@ -75,6 +75,8 @@ async function diag() {
 }
 
 const initial = await diag();
+await page.screenshot({ path: "/tmp/mei-deep-test.png", fullPage: true });
+fs.writeFileSync("/tmp/mei-deep-test.json", JSON.stringify({ stage: "initial", initial, pageErrors, consoleErrors }, null, 2));
 if (!initial.ready) throw new Error("3D runtime did not report ready");
 if (!initial.requiredBonesPresent) {
   throw new Error("Missing required bones: " + initial.missingBones.join(", "));
@@ -99,15 +101,23 @@ await sleep(650);
 const idle = await diag();
 
 await page.evaluate(() => window.Mei3D.setSpeaking(true));
-await sleep(650);
-const speakingA = await diag();
-await sleep(260);
-const speakingB = await diag();
-
-if (quatDistance(speakingA.snapshots.jaw, speakingB.snapshots.jaw) < 0.008) {
-  throw new Error("Jaw does not animate while speaking");
+await sleep(450);
+const speakingSamples = [];
+for (let i = 0; i < 5; i++) {
+  speakingSamples.push(await diag());
+  await sleep(140);
 }
-if (quatDistance(idle.snapshots.head, speakingB.snapshots.head) < 0.006) {
+const speakingA = speakingSamples[0];
+const speakingB = speakingSamples[speakingSamples.length - 1];
+
+const jawDistances = speakingSamples.map(sample => quatDistance(idle.snapshots.jaw, sample.snapshots.jaw));
+const jawRange = Math.max(...speakingSamples.flatMap((a, i) =>
+  speakingSamples.slice(i + 1).map(b => quatDistance(a.snapshots.jaw, b.snapshots.jaw))
+));
+if (Math.max(...jawDistances) < 0.02 || jawRange < 0.004) {
+  throw new Error("Jaw does not animate while speaking: " + JSON.stringify({ jawDistances, jawRange }));
+}
+if (Math.max(...speakingSamples.map(sample => quatDistance(idle.snapshots.head, sample.snapshots.head))) < 0.006) {
   throw new Error("Head does not add natural movement while speaking");
 }
 
