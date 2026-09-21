@@ -42,4 +42,4 @@ jobs:
       - name: Smoke test
         run: |
           curl --fail --silent http://127.0.0.1:4173/ | grep -q "Mei"
-          curl --fail --silent http://127.0.0.1:4173/app.js | grep -q "0.1.0-beta"
+          curl --fail --silent http://127.0.0.1:4173/app.js | grep -q "0.2.0-beta"
