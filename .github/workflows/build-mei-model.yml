@@ -1,0 +1,59 @@
+name: Build Mei local 3D asset
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-mei-model.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      MEI_SOURCE_URL: "https://sdmntprwestus3.oaiusercontent.com/files/00000000-5250-81fd-b213-7c9524f287c3/raw?se=2026-09-21T20%3A31%3A50Z&sp=r&sv=2026-02-06&sr=b&scid=c3c294ac-1db5-5456-8496-62c1d97ec73e&skoid=2d2fbb03-9efb-4ad0-a91c-1db2f5a47997&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-21T17%3A50%3A43Z&ske=2026-09-22T17%3A50%3A43Z&sks=b&skv=2026-02-06&sig=0ku4%2BMiu4JrqfxGTSwWxIWv5PmbBMf3e7/h12d8Zf6E%3D"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Mei source from temporary handoff
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 4 --retry-delay 2 "$MEI_SOURCE_URL" -o /tmp/mei-source.zip
+          unzip -q /tmp/mei-source.zip -d /tmp/mei-source
+          test -s /tmp/mei-source/source/Sketchfab_2021_09_11_23_03_28.blend
+
+      - name: Download Blender 4.5 LTS
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 4 --retry-delay 2             https://download.blender.org/release/Blender4.5/blender-4.5.14-linux-x64.tar.xz             -o /tmp/blender.tar.xz
+          tar -xJf /tmp/blender.tar.xz -C /tmp
+
+      - name: Export optimized GLB
+        run: |
+          set -euo pipefail
+          mkdir -p assets
+          /tmp/blender-4.5.14-linux-x64/blender             -b /tmp/mei-source/source/Sketchfab_2021_09_11_23_03_28.blend             --python scripts/export_mei_glb.py --             "$GITHUB_WORKSPACE/assets/mei-yinn.glb"             "$GITHUB_WORKSPACE/assets/mei-yinn-bones.txt"             768
+          test -s assets/mei-yinn.glb
+          ls -lh assets/mei-yinn.glb
+          SIZE=$(stat -c%s assets/mei-yinn.glb)
+          if [ "$SIZE" -gt 99000000 ]; then
+            echo "GLB too large for GitHub: $SIZE bytes"
+            exit 1
+          fi
+
+      - name: Commit generated web asset
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/mei-yinn.glb assets/mei-yinn-bones.txt
+          if git diff --cached --quiet; then
+            echo "No generated changes"
+            exit 0
+          fi
+          git commit -m "feat: bundle Mei Yinn 3D body locally"
+          git push
