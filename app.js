@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "0.1.0-beta";
+  const VERSION = "0.2.0-beta";
   const $ = (s, root = document) => root.querySelector(s);
   const $$ = (s, root = document) => [...root.querySelectorAll(s)];
   const store = {
@@ -30,7 +30,14 @@
     animationTimer: null,
     currentState: "idle",
     profileName: store.get("profileName", "Spencer"),
-    dragged: false
+    dragged: false,
+    sketchfabApi: null,
+    sketchfabReady: false,
+    rigNodes: {},
+    rigBaseMatrices: {},
+    nativeAnimations: [],
+    motionFrame: 0,
+    motionToken: 0
   };
 
   const els = {
@@ -38,6 +45,8 @@
     stage: $("#stage"),
     character: $("#meiCharacter"),
     layer: $("#meiLayer"),
+    mei3dFrame: $("#mei3dFrame"),
+    mei3dLoading: $("#mei3dLoading"),
     bubble: $("#speechBubble"),
     bubbleText: $("#bubbleText"),
     bubbleClose: $("#bubbleClose"),
@@ -72,6 +81,253 @@
     speak: "Hablando"
   };
 
+  const MEI_3D_UID = "d549647cfae245679fe761babe4e3427";
+
+  function sideMatch(name, side) {
+    const n = String(name || "").toLowerCase();
+    const right = /(?:right|(^|[._ -])r(?:$|[._ -]))/i.test(n);
+    const left = /(?:left|(^|[._ -])l(?:$|[._ -]))/i.test(n);
+    return side === "r" ? right : side === "l" ? left : true;
+  }
+
+  function nodeScore(node, spec) {
+    const name = String(node?.name || "");
+    if (!name || (spec.side && !sideMatch(name, spec.side))) return -1;
+    if (spec.exclude?.some(rx => rx.test(name))) return -1;
+    let score = 0;
+    spec.include.forEach((rx, i) => { if (rx.test(name)) score += 30 - i * 3; });
+    if (!score) return -1;
+    if (/matrixtransform/i.test(String(node?.type || ""))) score += 8;
+    return score;
+  }
+
+  function mapRigNodes(nodes) {
+    const list = Array.isArray(nodes) ? nodes : Object.values(nodes || {});
+    const specs = {
+      root: { include: [/^armature$/i, /^root$/i, /pelvis/i, /hips?/i] },
+      chest: { include: [/spine0?3/i, /spine0?2/i, /chest/i, /torso/i, /upper.?body/i] },
+      neck: { include: [/neck/i] },
+      head: { include: [/(^|[._ -])head($|[._ -])/i], exclude: [/top/i, /end/i] },
+      upperArmR: { side: "r", include: [/upper.?arm/i, /arm0?1/i, /shoulder/i], exclude: [/fore/i, /lower/i, /hand/i, /wrist/i] },
+      foreArmR: { side: "r", include: [/fore.?arm/i, /lower.?arm/i, /arm0?2/i, /elbow/i], exclude: [/hand/i, /wrist/i] },
+      handR: { side: "r", include: [/hand/i, /wrist/i] },
+      upperArmL: { side: "l", include: [/upper.?arm/i, /arm0?1/i, /shoulder/i], exclude: [/fore/i, /lower/i, /hand/i, /wrist/i] },
+      foreArmL: { side: "l", include: [/fore.?arm/i, /lower.?arm/i, /arm0?2/i, /elbow/i], exclude: [/hand/i, /wrist/i] },
+      handL: { side: "l", include: [/hand/i, /wrist/i] },
+      thighR: { side: "r", include: [/thigh/i, /upper.?leg/i, /leg0?1/i], exclude: [/lower/i, /calf/i, /shin/i, /foot/i] },
+      shinR: { side: "r", include: [/lower.?leg/i, /calf/i, /shin/i, /leg0?2/i], exclude: [/foot/i] },
+      thighL: { side: "l", include: [/thigh/i, /upper.?leg/i, /leg0?1/i], exclude: [/lower/i, /calf/i, /shin/i, /foot/i] },
+      shinL: { side: "l", include: [/lower.?leg/i, /calf/i, /shin/i, /leg0?2/i], exclude: [/foot/i] }
+    };
+
+    state.rigNodes = {};
+    Object.entries(specs).forEach(([role, spec]) => {
+      let best = null, bestScore = -1;
+      list.forEach(node => {
+        const score = nodeScore(node, spec);
+        if (score > bestScore) { best = node; bestScore = score; }
+      });
+      if (best) state.rigNodes[role] = best;
+    });
+
+    state.rigBaseMatrices = {};
+    Object.entries(state.rigNodes).forEach(([role, node]) => {
+      state.sketchfabApi.getMatrix(node.instanceID, (err, matrix) => {
+        if (!err && matrix && matrix.length === 16) state.rigBaseMatrices[role] = Array.from(matrix);
+      });
+    });
+  }
+
+  function mat4Multiply(a, b) {
+    const out = new Array(16).fill(0);
+    for (let col = 0; col < 4; col++) {
+      for (let row = 0; row < 4; row++) {
+        out[col * 4 + row] =
+          a[0 * 4 + row] * b[col * 4 + 0] +
+          a[1 * 4 + row] * b[col * 4 + 1] +
+          a[2 * 4 + row] * b[col * 4 + 2] +
+          a[3 * 4 + row] * b[col * 4 + 3];
+      }
+    }
+    return out;
+  }
+
+  function rotationMatrix(axis, angle) {
+    const c = Math.cos(angle), s = Math.sin(angle);
+    if (axis === "x") return [1,0,0,0, 0,c,s,0, 0,-s,c,0, 0,0,0,1];
+    if (axis === "y") return [c,0,-s,0, 0,1,0,0, s,0,c,0, 0,0,0,1];
+    return [c,s,0,0, -s,c,0,0, 0,0,1,0, 0,0,0,1];
+  }
+
+  function setJoint(role, angle, axis = "z") {
+    const api = state.sketchfabApi;
+    const node = state.rigNodes[role];
+    const base = state.rigBaseMatrices[role];
+    if (!api || !node || !base) return false;
+    api.setMatrix(node.instanceID, mat4Multiply(base, rotationMatrix(axis, angle)), () => {});
+    return true;
+  }
+
+  function restoreRigPose() {
+    const api = state.sketchfabApi;
+    if (!api) return;
+    Object.entries(state.rigBaseMatrices).forEach(([role, matrix]) => {
+      const node = state.rigNodes[role];
+      if (node) api.setMatrix(node.instanceID, matrix, () => {});
+    });
+  }
+
+  function tryNativeAnimation(name) {
+    const api = state.sketchfabApi;
+    if (!api || !state.nativeAnimations.length) return false;
+    const patterns = {
+      idle: /idle|breath|stand/i,
+      wave: /wave|hello|greet/i,
+      think: /think|ponder/i,
+      dance: /dance/i,
+      sleep: /sleep|rest/i,
+      celebrate: /celebr|cheer|victory/i,
+      listen: /listen|idle/i,
+      speak: /talk|speak|idle/i
+    };
+    const match = state.nativeAnimations.find(a => patterns[name]?.test(String(a[1] || "")));
+    if (!match) return false;
+    api.setCurrentAnimationByUID(match[0], err => {
+      if (!err) {
+        api.setCycleMode(["idle","listen","speak","sleep"].includes(name) ? "loopOne" : "one", () => {});
+        api.play(() => {});
+      }
+    });
+    return true;
+  }
+
+  function applyProceduralPose(name, t) {
+    const s = Math.sin(t * 3.2);
+    const fast = Math.sin(t * 7.5);
+    if (name === "idle") {
+      setJoint("chest", 0.025 * s, "z");
+      setJoint("head", 0.035 * Math.sin(t * 1.7), "y");
+    } else if (name === "wave") {
+      setJoint("upperArmR", -1.38 + 0.08 * s, "z");
+      setJoint("foreArmR", -0.62 + 0.42 * fast, "z");
+      setJoint("handR", 0.22 * fast, "y");
+      setJoint("head", -0.06, "z");
+    } else if (name === "think") {
+      setJoint("upperArmR", -0.92, "z");
+      setJoint("foreArmR", -1.10, "z");
+      setJoint("head", 0.13 + 0.025 * s, "z");
+      setJoint("chest", -0.04, "z");
+    } else if (name === "dance") {
+      setJoint("chest", 0.16 * fast, "z");
+      setJoint("head", -0.10 * fast, "z");
+      setJoint("upperArmR", -1.05 - 0.35 * s, "z");
+      setJoint("upperArmL", 1.05 + 0.35 * s, "z");
+      setJoint("foreArmR", -0.40 + 0.30 * fast, "z");
+      setJoint("foreArmL", 0.40 - 0.30 * fast, "z");
+      setJoint("thighR", 0.16 * fast, "x");
+      setJoint("thighL", -0.16 * fast, "x");
+      setJoint("shinR", -0.10 * fast, "x");
+      setJoint("shinL", 0.10 * fast, "x");
+    } else if (name === "celebrate") {
+      setJoint("upperArmR", -1.75 + 0.10 * s, "z");
+      setJoint("upperArmL", 1.75 - 0.10 * s, "z");
+      setJoint("foreArmR", -0.28 * fast, "z");
+      setJoint("foreArmL", 0.28 * fast, "z");
+      setJoint("chest", 0.06 * fast, "z");
+    } else if (name === "sleep") {
+      setJoint("head", 0.25 + 0.025 * s, "z");
+      setJoint("chest", 0.10, "z");
+      setJoint("upperArmR", -0.16, "z");
+      setJoint("upperArmL", 0.16, "z");
+    } else if (name === "listen") {
+      setJoint("head", -0.11 + 0.02 * s, "z");
+      setJoint("chest", 0.025 * s, "z");
+    } else if (name === "speak") {
+      setJoint("head", 0.025 * fast, "y");
+      setJoint("chest", 0.018 * s, "z");
+    }
+  }
+
+  function play3DMotion(name) {
+    if (!state.sketchfabReady || !state.sketchfabApi) return;
+    cancelAnimationFrame(state.motionFrame);
+    const token = ++state.motionToken;
+    state.sketchfabApi.pause(() => {});
+    restoreRigPose();
+
+    if (tryNativeAnimation(name)) return;
+
+    const started = performance.now();
+    let last = 0;
+    const frame = now => {
+      if (token !== state.motionToken || !state.sketchfabReady) return;
+      if (now - last > 45) {
+        applyProceduralPose(name, (now - started) / 1000);
+        last = now;
+      }
+      state.motionFrame = requestAnimationFrame(frame);
+    };
+    state.motionFrame = requestAnimationFrame(frame);
+  }
+
+  function initMei3D() {
+    if (!els.mei3dFrame || !window.Sketchfab) {
+      if (els.mei3dLoading) {
+        els.mei3dLoading.classList.add("error");
+        els.mei3dLoading.textContent = "No se pudo iniciar el visor 3D";
+      }
+      return;
+    }
+
+    const client = new window.Sketchfab("1.12.1", els.mei3dFrame);
+    client.init(MEI_3D_UID, {
+      autostart: 1,
+      preload: 1,
+      transparent: 1,
+      animation_autoplay: 0,
+      autospin: 0,
+      ui_controls: 0,
+      ui_infos: 0,
+      ui_hint: 0,
+      ui_settings: 0,
+      ui_vr: 0,
+      ui_ar: 0,
+      ui_watermark: 0,
+      ui_watermark_link: 0,
+      success(api) {
+        state.sketchfabApi = api;
+        api.start();
+        api.addEventListener("viewerready", () => {
+          state.sketchfabReady = true;
+          if (els.mei3dLoading) els.mei3dLoading.classList.add("ready");
+          api.getNodeMap((err, nodes) => {
+            if (!err) {
+              mapRigNodes(nodes);
+              setTimeout(() => play3DMotion(state.currentState || "idle"), 350);
+            }
+          });
+          api.getAnimations((err, animations) => {
+            if (!err && Array.isArray(animations)) state.nativeAnimations = animations;
+          });
+          toast("Cuerpo 3D de Mei conectado");
+          setTimeout(() => {
+            if (state.currentState === "idle") {
+              setState("wave", 2200);
+              showBubble("Ya estoy usando mi cuerpo 3D real.", { speak: false, duration: 3600 });
+            }
+          }, 850);
+        });
+      },
+      error() {
+        if (els.mei3dLoading) {
+          els.mei3dLoading.classList.add("error");
+          els.mei3dLoading.textContent = "El cuerpo 3D no pudo cargarse";
+        }
+        toast("No se pudo cargar el visor 3D");
+      }
+    });
+  }
+
   function saveAll() {
     store.set("sound", state.sound);
     store.set("theme", state.theme);
@@ -93,6 +349,7 @@
     els.character.className = "mei-character state-" + next;
     els.meiStateText.textContent = stateNames[next] || next;
     els.statusText.textContent = next === "sleep" ? "Mei descansando" : next === "listen" ? "Mei escuchando" : "Mei disponible";
+    play3DMotion(next);
     if (duration) state.animationTimer = setTimeout(() => setState("idle"), duration);
   }
 
@@ -229,7 +486,7 @@
   }
 
   function capabilitiesText() {
-    return "Puedo escucharte, hablar, guardar recuerdos y misiones, cambiar de sección, abrir algunos recursos web, reaccionar con mi cuerpo y reconocer órdenes simples. Esta beta deja preparado mi cuerpo para conectar después un motor de inteligencia artificial más potente.";
+    return "Puedo escucharte, hablar, guardar recuerdos y misiones, cambiar de sección, abrir algunos recursos web, reaccionar con mi cuerpo 3D y reconocer órdenes simples. Mi cuerpo actual usa un modelo 3D riggeado y puede ejecutar movimientos desde la interfaz.";
   }
 
   function processCommand(raw, source = "text") {
@@ -534,13 +791,14 @@
     updateClock();
     setInterval(updateClock, 1000);
     configureRecognition();
+    initMei3D();
     setupDrag();
     setupLookTracking();
     bindEvents();
     proactiveLoop();
     setTimeout(() => {
       setState("wave", 2500);
-      showBubble(timeGreeting() + ", " + state.profileName + ". Soy Mei. Tócame, escríbeme o activa el micrófono. Esta vez sí tengo cuerpo.", { speak: false, duration: 7200 });
+      showBubble(timeGreeting() + ", " + state.profileName + ". Soy Mei. Tócame, escríbeme o activa el micrófono. Esta vez sí tengo cuerpo 3D.", { speak: false, duration: 7200 });
     }, 650);
 
     if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
