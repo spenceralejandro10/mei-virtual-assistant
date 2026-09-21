@@ -33,10 +33,32 @@ await page.goto("http://127.0.0.1:4173/", {
   timeout: 30000
 });
 
-await page.waitForFunction(
-  () => window.Mei3D?.isReady?.() === true,
-  { timeout: 120000 }
-);
+try {
+  await page.waitForFunction(
+    () => window.Mei3D?.isReady?.() === true,
+    { timeout: 120000 }
+  );
+} catch (error) {
+  const boot = await page.evaluate(() => ({
+    href: location.href,
+    mei3dType: typeof window.Mei3D,
+    readyFlag: window.__MEI_3D_READY__,
+    loadingText: document.getElementById("mei3dLoading")?.textContent || null,
+    canvas: (() => {
+      const el = document.getElementById("mei3dCanvas");
+      return el ? { width: el.width, height: el.height, clientWidth: el.clientWidth, clientHeight: el.clientHeight } : null;
+    })(),
+    resources: performance.getEntriesByType("resource")
+      .map(r => ({ name: r.name, duration: r.duration, transferSize: r.transferSize }))
+      .filter(r => /three|mei-yinn|mei-3d/i.test(r.name))
+  }));
+  const failureReport = { error: String(error), boot, pageErrors, consoleErrors };
+  fs.writeFileSync("/tmp/mei-deep-test.json", JSON.stringify(failureReport, null, 2));
+  await page.screenshot({ path: "/tmp/mei-deep-test.png", fullPage: true });
+  console.error("MEI_BOOT_DIAGNOSTICS", JSON.stringify(failureReport, null, 2));
+  await browser.close();
+  throw error;
+}
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
