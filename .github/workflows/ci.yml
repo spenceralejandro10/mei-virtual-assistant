@@ -45,15 +45,7 @@ jobs:
           grep -q "BONE: upperarm01.R" assets/mei-yinn-bones.txt
           grep -q "BONE: upperleg01.L" assets/mei-yinn-bones.txt
           grep -q "BONE: upperleg01.R" assets/mei-yinn-bones.txt
-          python3 - <<'PY'
-from pathlib import Path
-p=Path("assets/mei-yinn.glb")
-data=p.read_bytes()[:4]
-assert data == b"glTF", f"Bad GLB magic: {data!r}"
-size=p.stat().st_size
-assert 1_000_000 < size < 99_000_000, f"Unexpected GLB size: {size}"
-print("GLB_OK", size)
-PY
+          python3 -c 'from pathlib import Path; p=Path("assets/mei-yinn.glb"); data=p.read_bytes()[:4]; assert data==b"glTF", f"Bad GLB magic: {data!r}"; size=p.stat().st_size; assert 1000000<size<99000000, f"Unexpected GLB size: {size}"; print("GLB_OK", size)'
 
       - name: Install browser test dependency
         run: |
