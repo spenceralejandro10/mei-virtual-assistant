@@ -13,7 +13,10 @@ const browser = await puppeteer.launch({
     "--disable-setuid-sandbox",
     "--enable-webgl",
     "--ignore-gpu-blocklist",
-    "--use-gl=swiftshader",
+    "--use-gl=angle",
+    "--use-angle=swiftshader",
+    "--enable-unsafe-swiftshader",
+    "--disable-gpu-sandbox",
     "--disable-dev-shm-usage"
   ]
 });
