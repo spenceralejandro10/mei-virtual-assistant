@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b1020">
+  <meta name="description" content="Mei, asistente virtual web con cuerpo digital interactivo.">
+  <title>Mei — Virtual Assistant</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./assets/mei-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="aurora aurora-a"></div><div class="aurora aurora-b"></div>
+  <div class="app-shell">
+    <header class="topbar glass">
+      <a class="brand" href="#home" aria-label="Mei inicio">
+        <span class="brand-orb">M</span>
+        <span><strong>MEI</strong><small>virtual companion · v0.1.0-beta</small></span>
+      </a>
+      <nav class="nav" aria-label="Principal">
+        <button class="nav-btn active" data-scene="home">Inicio</button>
+        <button class="nav-btn" data-scene="missions">Misiones</button>
+        <button class="nav-btn" data-scene="memory">Memoria</button>
+        <button class="nav-btn" data-scene="lab">Laboratorio</button>
+      </nav>
+      <div class="top-actions">
+        <span class="status-pill"><i></i><span id="statusText">Mei disponible</span></span>
+        <button class="icon-btn" id="soundToggle" title="Activar/desactivar voz" aria-label="Voz">🔊</button>
+        <button class="icon-btn" id="themeToggle" title="Cambiar ambiente" aria-label="Tema">◐</button>
+      </div>
+    </header>
+
+    <main class="stage" id="stage">
+      <section class="scene active" data-scene-panel="home">
+        <div class="hero-copy">
+          <span class="eyebrow">COMPAÑERA DIGITAL · WEB FIRST</span>
+          <h1>No abras un chat.<br><em>Habla con Mei.</em></h1>
+          <p>Una asistente con presencia, voz, memoria y movimiento. Vive dentro de la página, reacciona a ti y convierte órdenes en acciones.</p>
+          <div class="hero-actions">
+            <button class="primary-btn" data-command="preséntate">Conocer a Mei</button>
+            <button class="secondary-btn" data-command="muéstrame qué puedes hacer">Ver capacidades</button>
+          </div>
+          <div class="mini-stats">
+            <div><b id="interactionCount">0</b><span>interacciones</span></div>
+            <div><b id="memoryCount">0</b><span>recuerdos</span></div>
+            <div><b id="taskCount">0</b><span>misiones</span></div>
+          </div>
+        </div>
+        <aside class="context-panel glass">
+          <div class="panel-head"><span>AHORA</span><time id="clock">--:--</time></div>
+          <div class="now-card">
+            <span class="pulse-ring"></span>
+            <div><small>Estado</small><strong id="meiStateText">Observando</strong></div>
+          </div>
+          <div class="suggestions">
+            <button data-command="qué hora es">¿Qué hora es?</button>
+            <button data-command="recuérdame revisar CardNest">Recuérdame CardNest</button>
+            <button data-command="baila Mei">Haz algo divertido</button>
+          </div>
+          <div class="tip"><span>TIP</span><p>Prueba diciendo <b>“Mei”</b> con el micrófono activo.</p></div>
+        </aside>
+      </section>
+
+      <section class="scene" data-scene-panel="missions">
+        <div class="scene-heading"><span class="eyebrow">ENFOQUE</span><h2>Misiones</h2><p>Mei guarda pequeñas tareas directamente en este navegador.</p></div>
+        <div class="mission-layout">
+          <form class="glass mission-form" id="taskForm">
+            <label for="taskInput">Nueva misión</label>
+            <div class="input-row"><input id="taskInput" autocomplete="off" placeholder="Ej. revisar el repositorio mañana"><button>Agregar</button></div>
+            <small>También puedes decírselo a Mei: “recuérdame…”</small>
+          </form>
+          <div class="glass mission-list" id="taskList"></div>
+        </div>
+      </section>
+
+      <section class="scene" data-scene-panel="memory">
+        <div class="scene-heading"><span class="eyebrow">CONTEXTO LOCAL</span><h2>Memoria</h2><p>Recuerdos sencillos guardados en tu navegador. Puedes eliminarlos cuando quieras.</p></div>
+        <div class="memory-grid" id="memoryGrid"></div>
+      </section>
+
+      <section class="scene" data-scene-panel="lab">
+        <div class="scene-heading"><span class="eyebrow">SISTEMA</span><h2>Laboratorio de Mei</h2><p>Prueba sus sentidos, animaciones y personalidad.</p></div>
+        <div class="lab-grid">
+          <button class="lab-card glass" data-action="wave"><span>👋</span><b>Saludar</b><small>Animación corporal</small></button>
+          <button class="lab-card glass" data-action="think"><span>💭</span><b>Pensar</b><small>Estado cognitivo</small></button>
+          <button class="lab-card glass" data-action="dance"><span>✦</span><b>Bailar</b><small>Movimiento libre</small></button>
+          <button class="lab-card glass" data-action="sleep"><span>☾</span><b>Dormir</b><small>Modo inactivo</small></button>
+          <button class="lab-card glass" data-action="celebrate"><span>★</span><b>Celebrar</b><small>Respuesta positiva</small></button>
+          <button class="lab-card glass" id="voiceTest"><span>🎙</span><b>Probar voz</b><small>Speech synthesis</small></button>
+        </div>
+      </section>
+
+      <div class="mei-layer" id="meiLayer" aria-live="polite">
+        <div class="speech-bubble" id="speechBubble">
+          <span id="bubbleText">Hola. Soy Mei.</span>
+          <button id="bubbleClose" aria-label="Cerrar">×</button>
+        </div>
+
+        <div class="mei-character state-idle" id="meiCharacter" role="button" tabindex="0" aria-label="Mei, asistente virtual">
+          <div class="name-tag"><i></i> MEI</div>
+          <svg class="mei-svg" viewBox="0 0 300 420" aria-hidden="true">
+            <defs>
+              <linearGradient id="hair" x1="0" x2="1"><stop stop-color="#171429"/><stop offset="1" stop-color="#34305a"/></linearGradient>
+              <linearGradient id="dress" x1="0" x2="1"><stop stop-color="#7457ff"/><stop offset="1" stop-color="#a678ff"/></linearGradient>
+              <linearGradient id="skin" x1="0" x2="1"><stop stop-color="#ffd8c6"/><stop offset="1" stop-color="#f5bda9"/></linearGradient>
+              <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            </defs>
+            <ellipse class="shadow" cx="150" cy="395" rx="78" ry="15"/>
+            <g class="body">
+              <g class="legs">
+                <path d="M116 316 Q111 352 107 378" class="skin stroke"/>
+                <path d="M184 316 Q190 352 193 378" class="skin stroke"/>
+                <path d="M82 382 Q107 368 126 382 Q125 399 90 398 Q78 396 82 382" class="shoe"/>
+                <path d="M174 382 Q193 368 218 382 Q222 396 210 398 Q175 399 174 382" class="shoe"/>
+              </g>
+              <path d="M94 218 Q150 190 206 218 L223 329 Q150 358 77 329Z" class="dress"/>
+              <path d="M91 225 Q65 252 55 288" class="arm arm-left skin stroke"/>
+              <path d="M209 225 Q235 252 245 288" class="arm arm-right skin stroke"/>
+              <circle cx="53" cy="292" r="13" class="skin stroke hand-left"/>
+              <circle cx="247" cy="292" r="13" class="skin stroke hand-right"/>
+              <path d="M113 207 Q150 226 187 207 L183 249 Q150 268 117 249Z" fill="#f4f2ff" opacity=".95"/>
+              <circle cx="150" cy="183" r="22" class="skin"/>
+              <g class="head">
+                <path class="hair-back" d="M64 110 Q73 25 151 25 Q237 26 239 117 L219 213 Q192 231 175 203 L123 203 Q101 230 78 208Z"/>
+                <ellipse cx="150" cy="126" rx="76" ry="82" class="skin face"/>
+                <path class="hair-front" d="M77 105 Q81 34 151 31 Q221 34 229 104 Q196 81 173 64 Q154 88 117 66 Q103 93 77 105Z"/>
+                <g class="brows"><path d="M104 112 Q121 103 133 111"/><path d="M167 111 Q180 103 196 112"/></g>
+                <g class="eyes">
+                  <ellipse cx="119" cy="134" rx="15" ry="19" class="eye-white"/>
+                  <ellipse cx="181" cy="134" rx="15" ry="19" class="eye-white"/>
+                  <circle cx="121" cy="137" r="9" class="iris"/><circle cx="179" cy="137" r="9" class="iris"/>
+                  <circle cx="124" cy="133" r="3" class="eye-shine"/><circle cx="182" cy="133" r="3" class="eye-shine"/>
+                </g>
+                <path class="mouth" d="M137 169 Q150 181 163 169"/>
+                <ellipse cx="96" cy="161" rx="13" ry="6" class="blush"/><ellipse cx="204" cy="161" rx="13" ry="6" class="blush"/>
+                <path d="M82 87 Q57 135 72 190" class="hair-lock"/><path d="M218 87 Q242 135 227 190" class="hair-lock"/>
+                <g class="hair-pin" filter="url(#glow)"><path d="M202 70 l7 9 11 1-8 7 2 11-10-5-10 5 2-11-8-7 11-1z"/></g>
+              </g>
+            </g>
+          </svg>
+          <div class="activity-dots"><i></i><i></i><i></i></div>
+        </div>
+
+        <div class="quick-ring" id="quickRing">
+          <button style="--a:-65deg" data-command="hola Mei" title="Saludar">👋</button>
+          <button style="--a:-20deg" data-command="qué puedes hacer" title="Capacidades">✦</button>
+          <button style="--a:25deg" id="quickMic" title="Hablar">🎙</button>
+          <button style="--a:70deg" data-action="dance" title="Bailar">♫</button>
+        </div>
+      </div>
+    </main>
+
+    <footer class="command-bar glass">
+      <button class="mic-btn" id="micButton" aria-label="Hablar con Mei"><span class="mic-pulse"></span>🎙</button>
+      <div class="command-input">
+        <span class="prompt-mark">M</span>
+        <input id="commandInput" autocomplete="off" placeholder="Escribe o dile algo a Mei…">
+        <span class="listening-label" id="listeningLabel">Escuchando…</span>
+      </div>
+      <button class="send-btn" id="sendButton">Enviar <span>↗</span></button>
+      <div class="shortcut">Enter</div>
+    </footer>
+  </div>
+
+  <div class="toast-stack" id="toastStack"></div>
+  <script src="./app.js"></script>
+</body>
+</html>
