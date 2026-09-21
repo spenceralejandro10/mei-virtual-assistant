@@ -45,7 +45,7 @@
     stage: $("#stage"),
     character: $("#meiCharacter"),
     layer: $("#meiLayer"),
-    mei3dFrame: $("#mei3dFrame"),
+    mei3dCanvas: $("#mei3dCanvas"),
     mei3dLoading: $("#mei3dLoading"),
     bubble: $("#speechBubble"),
     bubbleText: $("#bubbleText"),
@@ -249,83 +249,46 @@
   }
 
   function play3DMotion(name) {
-    if (!state.sketchfabReady || !state.sketchfabApi) return;
-    cancelAnimationFrame(state.motionFrame);
-    const token = ++state.motionToken;
-    state.sketchfabApi.pause(() => {});
-    restoreRigPose();
-
-    if (tryNativeAnimation(name)) return;
-
-    const started = performance.now();
-    let last = 0;
-    const frame = now => {
-      if (token !== state.motionToken || !state.sketchfabReady) return;
-      if (now - last > 45) {
-        applyProceduralPose(name, (now - started) / 1000);
-        last = now;
-      }
-      state.motionFrame = requestAnimationFrame(frame);
-    };
-    state.motionFrame = requestAnimationFrame(frame);
+    if (window.Mei3D && typeof window.Mei3D.setState === "function") {
+      window.Mei3D.setState(name);
+    }
   }
 
   function initMei3D() {
-    if (!els.mei3dFrame || !window.Sketchfab) {
+    let announced = false;
+
+    const onReady = () => {
+      state.sketchfabReady = true;
+      if (els.mei3dLoading) els.mei3dLoading.classList.add("ready");
+      play3DMotion(state.currentState || "idle");
+
+      if (!announced) {
+        announced = true;
+        toast("Cuerpo 3D local de Mei conectado");
+        setTimeout(() => {
+          if (state.currentState === "idle") {
+            setState("wave", 2200);
+            showBubble("Ya estoy usando mi cuerpo 3D local, sin el bloqueo de contenido.", { speak: false, duration: 4200 });
+          }
+        }, 650);
+      }
+    };
+
+    const onError = () => {
+      state.sketchfabReady = false;
       if (els.mei3dLoading) {
         els.mei3dLoading.classList.add("error");
-        els.mei3dLoading.textContent = "No se pudo iniciar el visor 3D";
+        els.mei3dLoading.textContent = "El cuerpo 3D no pudo cargarse";
       }
-      return;
-    }
+      toast("No se pudo cargar el cuerpo 3D local");
+    };
 
-    const client = new window.Sketchfab("1.12.1", els.mei3dFrame);
-    client.init(MEI_3D_UID, {
-      autostart: 1,
-      preload: 1,
-      transparent: 1,
-      animation_autoplay: 0,
-      autospin: 0,
-      ui_controls: 0,
-      ui_infos: 0,
-      ui_hint: 0,
-      ui_settings: 0,
-      ui_vr: 0,
-      ui_ar: 0,
-      ui_watermark: 0,
-      ui_watermark_link: 0,
-      success(api) {
-        state.sketchfabApi = api;
-        api.start();
-        api.addEventListener("viewerready", () => {
-          state.sketchfabReady = true;
-          if (els.mei3dLoading) els.mei3dLoading.classList.add("ready");
-          api.getNodeMap((err, nodes) => {
-            if (!err) {
-              mapRigNodes(nodes);
-              setTimeout(() => play3DMotion(state.currentState || "idle"), 350);
-            }
-          });
-          api.getAnimations((err, animations) => {
-            if (!err && Array.isArray(animations)) state.nativeAnimations = animations;
-          });
-          toast("Cuerpo 3D de Mei conectado");
-          setTimeout(() => {
-            if (state.currentState === "idle") {
-              setState("wave", 2200);
-              showBubble("Ya estoy usando mi cuerpo 3D real.", { speak: false, duration: 3600 });
-            }
-          }, 850);
-        });
-      },
-      error() {
-        if (els.mei3dLoading) {
-          els.mei3dLoading.classList.add("error");
-          els.mei3dLoading.textContent = "El cuerpo 3D no pudo cargarse";
-        }
-        toast("No se pudo cargar el visor 3D");
-      }
-    });
+    window.addEventListener("mei3d-ready", onReady, { once: true });
+    window.addEventListener("mei3d-error", onError, { once: true });
+
+    if (window.Mei3D && typeof window.Mei3D.isReady === "function" && window.Mei3D.isReady()) {
+      onReady();
+    }
   }
 
   function saveAll() {
