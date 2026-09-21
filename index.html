@@ -99,46 +99,10 @@
 
         <div class="mei-character state-idle" id="meiCharacter" role="button" tabindex="0" aria-label="Mei, asistente virtual">
           <div class="name-tag"><i></i> MEI</div>
-          <svg class="mei-svg" viewBox="0 0 300 420" aria-hidden="true">
-            <defs>
-              <linearGradient id="hair" x1="0" x2="1"><stop stop-color="#171429"/><stop offset="1" stop-color="#34305a"/></linearGradient>
-              <linearGradient id="dress" x1="0" x2="1"><stop stop-color="#7457ff"/><stop offset="1" stop-color="#a678ff"/></linearGradient>
-              <linearGradient id="skin" x1="0" x2="1"><stop stop-color="#ffd8c6"/><stop offset="1" stop-color="#f5bda9"/></linearGradient>
-              <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-            </defs>
-            <ellipse class="shadow" cx="150" cy="395" rx="78" ry="15"/>
-            <g class="body">
-              <g class="legs">
-                <path d="M116 316 Q111 352 107 378" class="skin stroke"/>
-                <path d="M184 316 Q190 352 193 378" class="skin stroke"/>
-                <path d="M82 382 Q107 368 126 382 Q125 399 90 398 Q78 396 82 382" class="shoe"/>
-                <path d="M174 382 Q193 368 218 382 Q222 396 210 398 Q175 399 174 382" class="shoe"/>
-              </g>
-              <path d="M94 218 Q150 190 206 218 L223 329 Q150 358 77 329Z" class="dress"/>
-              <path d="M91 225 Q65 252 55 288" class="arm arm-left skin stroke"/>
-              <path d="M209 225 Q235 252 245 288" class="arm arm-right skin stroke"/>
-              <circle cx="53" cy="292" r="13" class="skin stroke hand-left"/>
-              <circle cx="247" cy="292" r="13" class="skin stroke hand-right"/>
-              <path d="M113 207 Q150 226 187 207 L183 249 Q150 268 117 249Z" fill="#f4f2ff" opacity=".95"/>
-              <circle cx="150" cy="183" r="22" class="skin"/>
-              <g class="head">
-                <path class="hair-back" d="M64 110 Q73 25 151 25 Q237 26 239 117 L219 213 Q192 231 175 203 L123 203 Q101 230 78 208Z"/>
-                <ellipse cx="150" cy="126" rx="76" ry="82" class="skin face"/>
-                <path class="hair-front" d="M77 105 Q81 34 151 31 Q221 34 229 104 Q196 81 173 64 Q154 88 117 66 Q103 93 77 105Z"/>
-                <g class="brows"><path d="M104 112 Q121 103 133 111"/><path d="M167 111 Q180 103 196 112"/></g>
-                <g class="eyes">
-                  <ellipse cx="119" cy="134" rx="15" ry="19" class="eye-white"/>
-                  <ellipse cx="181" cy="134" rx="15" ry="19" class="eye-white"/>
-                  <circle cx="121" cy="137" r="9" class="iris"/><circle cx="179" cy="137" r="9" class="iris"/>
-                  <circle cx="124" cy="133" r="3" class="eye-shine"/><circle cx="182" cy="133" r="3" class="eye-shine"/>
-                </g>
-                <path class="mouth" d="M137 169 Q150 181 163 169"/>
-                <ellipse cx="96" cy="161" rx="13" ry="6" class="blush"/><ellipse cx="204" cy="161" rx="13" ry="6" class="blush"/>
-                <path d="M82 87 Q57 135 72 190" class="hair-lock"/><path d="M218 87 Q242 135 227 190" class="hair-lock"/>
-                <g class="hair-pin" filter="url(#glow)"><path d="M202 70 l7 9 11 1-8 7 2 11-10-5-10 5 2-11-8-7 11-1z"/></g>
-              </g>
-            </g>
-          </svg>
+          <div class="mei-photo-body" aria-hidden="true">
+            <img class="mei-photo" src="./assets/mei-model.png" alt="">
+            <div class="mei-photo-glow"></div>
+          </div>
           <div class="activity-dots"><i></i><i></i><i></i></div>
         </div>
 
