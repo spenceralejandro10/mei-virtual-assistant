@@ -392,6 +392,14 @@ function quaternionSnapshot(role) {
   };
 }
 
+function boneProjection(role) {
+  const bone = rig[role];
+  if (!bone) return null;
+  bone.getWorldPosition(tmpVec);
+  tmpVec.project(camera);
+  return { x: tmpVec.x, y: tmpVec.y, z: tmpVec.z };
+}
+
 function diagnostics() {
   const required = ["head", "jaw", "chest", "upperArmL", "upperArmR", "thighL", "thighR"];
   return {
@@ -409,6 +417,8 @@ function diagnostics() {
       position: { x: camera.position.x, y: camera.position.y, z: camera.position.z }
     },
     projectedBounds: projectedBounds(),
+    headProjected: boneProjection("head"),
+    rootProjected: boneProjection("root"),
     snapshots: {
       head: quaternionSnapshot("head"),
       jaw: quaternionSnapshot("jaw"),
