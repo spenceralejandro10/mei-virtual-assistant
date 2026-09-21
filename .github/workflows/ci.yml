@@ -13,6 +13,7 @@ permissions:
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,15 +24,41 @@ jobs:
           node-version: 22
 
       - name: Check JavaScript syntax
-        run: node --check app.js
+        run: |
+          node --check app.js
+          node --check mei-3d.js
+          node --check tests/deep-e2e.mjs
 
-      - name: Validate required files
+      - name: Validate required files and 3D asset
         run: |
           test -s index.html
           test -s styles.css
           test -s app.js
+          test -s mei-3d.js
           test -s manifest.webmanifest
           test -s assets/mei-icon.svg
+          test -s assets/mei-yinn.glb
+          test -s assets/mei-yinn-bones.txt
+          grep -q "BONE: head" assets/mei-yinn-bones.txt
+          grep -q "BONE: jaw" assets/mei-yinn-bones.txt
+          grep -q "BONE: upperarm01.L" assets/mei-yinn-bones.txt
+          grep -q "BONE: upperarm01.R" assets/mei-yinn-bones.txt
+          grep -q "BONE: upperleg01.L" assets/mei-yinn-bones.txt
+          grep -q "BONE: upperleg01.R" assets/mei-yinn-bones.txt
+          python3 - <<'PY'
+from pathlib import Path
+p=Path("assets/mei-yinn.glb")
+data=p.read_bytes()[:4]
+assert data == b"glTF", f"Bad GLB magic: {data!r}"
+size=p.stat().st_size
+assert 1_000_000 < size < 99_000_000, f"Unexpected GLB size: {size}"
+print("GLB_OK", size)
+PY
+
+      - name: Install browser test dependency
+        run: |
+          npm install --no-save puppeteer-core@24.16.0
+          test -x /usr/bin/google-chrome || test -x /usr/bin/google-chrome-stable
 
       - name: Start static server
         run: |
@@ -39,7 +66,24 @@ jobs:
           echo $! >/tmp/mei-http.pid
           sleep 2
 
-      - name: Smoke test
+      - name: Static smoke test
         run: |
           curl --fail --silent http://127.0.0.1:4173/ | grep -q "Mei"
           curl --fail --silent http://127.0.0.1:4173/app.js | grep -q "0.2.0-beta"
+          curl --fail --silent --range 0-3 http://127.0.0.1:4173/assets/mei-yinn.glb | grep -q "glTF"
+
+      - name: Deep 3D browser test
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: node tests/deep-e2e.mjs
+
+      - name: Upload deep-test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mei-deep-test
+          path: |
+            /tmp/mei-deep-test.png
+            /tmp/mei-deep-test.json
+          if-no-files-found: warn
+          retention-days: 7
