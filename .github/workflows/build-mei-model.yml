@@ -23,7 +23,7 @@ jobs:
         run: |
           set -euo pipefail
           curl --fail --location --retry 4 --retry-delay 2 "$MEI_SOURCE_URL" -o /tmp/mei-source.zip
-          unzip -q /tmp/mei-source.zip -d /tmp/mei-source
+          rm -rf /tmp/mei-source\n          mkdir -p /tmp/mei-source\n          unzip -qo /tmp/mei-source.zip -d /tmp/mei-source
           test -s /tmp/mei-source/source/Sketchfab_2021_09_11_23_03_28.blend
 
       - name: Download Blender 4.5 LTS
