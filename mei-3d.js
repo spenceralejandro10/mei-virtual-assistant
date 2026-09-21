@@ -168,10 +168,33 @@ function normalizeModel(root) {
   fitCamera();
 }
 
+function normalizedBoneName(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 function setupRig() {
-  Object.entries(boneMap).forEach(([role, name]) => {
-    const bone = model.getObjectByName(name);
+  const bones = [];
+  model.traverse(obj => {
+    if (obj.isBone) bones.push(obj);
+  });
+
+  Object.entries(boneMap).forEach(([role, expectedName]) => {
+    const expected = normalizedBoneName(expectedName);
+    let bone = model.getObjectByName(expectedName);
+
+    if (!bone || !bone.isBone) {
+      bone = bones.find(candidate => normalizedBoneName(candidate.name) === expected);
+    }
+
+    if (!bone) {
+      bone = bones.find(candidate => {
+        const actual = normalizedBoneName(candidate.name);
+        return actual.endsWith(expected) || expected.endsWith(actual);
+      });
+    }
+
     if (!bone || !bone.isBone) return;
+
     rig[role] = bone;
     baseQuat[role] = bone.quaternion.clone();
     targetQuat[role] = bone.quaternion.clone();
