@@ -1,14 +1,14 @@
 # Mei Virtual Assistant
 
-**Versión:** `0.1.0-beta`
+**Versión:** `0.2.0-beta`
 
-Mei es un experimento de asistente virtual **web-first** con cuerpo digital. En lugar de ser solamente una ventana de chat, Mei aparece como un personaje chibi original que observa, se mueve, escucha, habla, recuerda y ejecuta pequeñas acciones dentro de la experiencia web.
+Mei es un asistente virtual **web-first** con cuerpo digital 3D. En lugar de ser solamente una ventana de chat, Mei aparece como un personaje femenino 3D riggeado que observa, se mueve, escucha, habla, recuerda y ejecuta pequeñas acciones dentro de la experiencia web.
 
 ## Qué incluye esta beta
 
-- Personaje chibi femenino original dibujado en SVG.
-- Animaciones de reposo, saludo, pensamiento, baile, descanso, celebración, escucha y habla.
-- Seguimiento de la mirada con el puntero.
+- Cuerpo femenino 3D riggeado mostrado con Sketchfab Viewer API.
+- Movimientos de reposo, saludo, pensamiento, baile, descanso, celebración, escucha y habla mediante animaciones nativas o control procedural del rig.
+- Capa de movimiento preparada para mapear huesos del rig y controlar articulaciones desde JavaScript.
 - Personaje arrastrable horizontalmente en escritorio.
 - Menú radial al tocar a Mei.
 - Burbuja de diálogo contextual.
@@ -70,13 +70,13 @@ Usuario
             ┌────────┼────────┐
             ▼        ▼        ▼
           Cuerpo   Memoria   Acciones
-          SVG/CSS  local     navegador
+          3D rig   local     navegador
             │
             ▼
         Voz + estados
 ```
 
-La capa de comportamiento está separada conceptualmente del cuerpo. En futuras versiones, el bloque de respuesta local puede sustituirse o ampliarse con un motor de IA remoto o local sin rehacer el personaje.
+La capa de comportamiento está separada conceptualmente del cuerpo 3D. El visor expone el rig a la aplicación, y el bloque de respuesta local puede sustituirse o ampliarse con un motor de IA remoto o local sin rehacer el personaje.
 
 ## Privacidad de esta beta
 
