@@ -295,7 +295,7 @@ function desiredPose(name, t) {
     const gesture = Math.sin(t * 1.18);
     const gestureGate = Math.max(0, Math.sin(t * 0.82));
 
-    addPose(pose, "jaw", 0.035 + speechBeat * 0.095, 0, 0);
+    addPose(pose, "jaw", 0.055 + speechBeat * 0.15, 0, 0);
     addPose(pose, "head", 0.012 * phrase, 0.020 * gesture, 0.012 * Math.sin(t * 1.55));
     addPose(pose, "neck", -0.005 * phrase, 0.008 * gesture, 0);
     addPose(pose, "chest", 0.010 * phrase, 0.012 * gesture, 0.008 * phrase);
