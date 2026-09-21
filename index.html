@@ -16,7 +16,7 @@
     <header class="topbar glass">
       <a class="brand" href="#home" aria-label="Mei inicio">
         <span class="brand-orb">M</span>
-        <span><strong>MEI</strong><small>virtual companion · v0.1.0-beta</small></span>
+        <span><strong>MEI</strong><small>virtual companion · v0.2.0-beta</small></span>
       </a>
       <nav class="nav" aria-label="Principal">
         <button class="nav-btn active" data-scene="home">Inicio</button>
@@ -99,23 +99,9 @@
 
         <div class="mei-character state-idle" id="meiCharacter" role="button" tabindex="0" aria-label="Mei, asistente virtual">
           <div class="name-tag"><i></i> MEI</div>
-          <div class="mei-rig" aria-hidden="true">
-            <div class="rig-hair-back"></div>
-            <div class="rig-leg rig-leg-left"><span class="rig-shoe"></span></div>
-            <div class="rig-leg rig-leg-right"><span class="rig-shoe"></span></div>
-            <div class="rig-torso"></div>
-            <div class="rig-arm rig-arm-left"><span class="rig-forearm"><i class="rig-hand"></i></span></div>
-            <div class="rig-arm rig-arm-right"><span class="rig-forearm"><i class="rig-hand"></i></span></div>
-            <div class="rig-neck"></div>
-            <div class="rig-head">
-              <div class="rig-ear left"></div><div class="rig-ear right"></div>
-              <div class="rig-face">
-                <div class="rig-brow left"></div><div class="rig-brow right"></div>
-                <div class="rig-eye left"><i></i></div><div class="rig-eye right"><i></i></div>
-                <div class="rig-nose"></div><div class="rig-mouth"></div>
-              </div>
-              <div class="rig-hair-front"></div>
-            </div>
+          <div class="mei-3d-shell" aria-hidden="true">
+            <iframe id="mei3dFrame" title="Mei 3D" allow="autoplay; fullscreen; xr-spatial-tracking" allowfullscreen></iframe>
+            <div class="mei-3d-loading" id="mei3dLoading"><span></span> Cargando cuerpo 3D…</div>
           </div>
           <div class="activity-dots"><i></i><i></i><i></i></div>
         </div>
@@ -142,6 +128,7 @@
   </div>
 
   <div class="toast-stack" id="toastStack"></div>
+  <script src="https://static.sketchfab.com/api/sketchfab-viewer-1.12.1.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
