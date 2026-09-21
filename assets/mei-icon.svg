@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#8d6cff"/><stop offset="1" stop-color="#6ce5ff"/></linearGradient></defs>
+<rect width="512" height="512" rx="128" fill="#0b1020"/><circle cx="256" cy="256" r="184" fill="url(#g)" opacity=".16"/>
+<path d="M132 236c0-104 56-154 124-154s124 50 124 154v118c-35 48-213 48-248 0z" fill="#211d39"/>
+<ellipse cx="256" cy="232" rx="108" ry="119" fill="#ffd2bf"/>
+<path d="M150 206c8-89 52-120 106-120 59 0 101 38 108 119-43-17-69-41-91-66-24 26-69 55-123 67z" fill="#24203f"/>
+<ellipse cx="215" cy="241" rx="18" ry="24" fill="#fff"/><ellipse cx="297" cy="241" rx="18" ry="24" fill="#fff"/>
+<circle cx="218" cy="245" r="12" fill="#493778"/><circle cx="294" cy="245" r="12" fill="#493778"/>
+<circle cx="222" cy="240" r="4" fill="#fff"/><circle cx="298" cy="240" r="4" fill="#fff"/>
+<path d="M236 296q20 22 40 0" fill="none" stroke="#995565" stroke-width="7" stroke-linecap="round"/>
+<path d="M329 151l10 15 18 2-13 12 4 18-17-9-16 9 3-18-13-12 18-2z" fill="#6ce5ff"/>
+</svg>
