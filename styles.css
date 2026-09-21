@@ -215,7 +215,7 @@ body.light .glass{background:rgba(255,255,255,.76)}body.light .stage{background:
 .mei-character{width:330px;height:430px;filter:drop-shadow(0 28px 32px rgba(0,0,0,.42));}
 .mei-3d-shell{position:absolute;inset:0;overflow:hidden;border-radius:42% 42% 16% 16%;isolation:isolate}
 .mei-3d-shell:before{content:"";position:absolute;z-index:2;left:50%;bottom:18px;width:190px;height:28px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(ellipse,rgba(0,0,0,.34),transparent 68%);filter:blur(6px);pointer-events:none}
-#mei3dFrame{position:absolute;z-index:1;left:50%;bottom:-42px;width:470px;height:500px;transform:translateX(-50%);border:0;background:transparent;pointer-events:none}
+#mei3dCanvas{position:absolute;z-index:1;inset:0;width:100%;height:100%;display:block;background:transparent;pointer-events:none}
 .mei-3d-loading{position:absolute;z-index:5;left:50%;top:48%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:8px;white-space:nowrap;padding:8px 11px;border-radius:999px;background:rgba(9,13,25,.82);border:1px solid var(--line);font:600 10px "Space Grotesk";letter-spacing:.08em;color:#cfd5ef;transition:.25s}
 .mei-3d-loading span{width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 0 0 rgba(108,229,255,.38);animation:mei3dPulse 1.2s infinite}
 .mei-3d-loading.ready{opacity:0;transform:translate(-50%,-44%);pointer-events:none}
@@ -227,5 +227,5 @@ body.light .glass{background:rgba(255,255,255,.76)}body.light .stage{background:
 .state-dance .mei-3d-shell,.state-celebrate .mei-3d-shell{filter:drop-shadow(0 0 24px rgba(141,108,255,.24))}
 @media(max-width:720px){
   .mei-character{width:340px;height:440px}
-  #mei3dFrame{width:500px;height:520px;bottom:-45px}
+  #mei3dCanvas{width:100%;height:100%}
 }
