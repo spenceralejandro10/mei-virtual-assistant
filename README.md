@@ -6,7 +6,7 @@ Mei es un asistente virtual **web-first** con cuerpo digital 3D. En lugar de ser
 
 ## Qué incluye esta beta
 
-- Cuerpo femenino 3D riggeado mostrado con Sketchfab Viewer API.
+- Cuerpo femenino 3D riggeado servido directamente desde el repositorio y renderizado con Three.js.
 - Movimientos de reposo, saludo, pensamiento, baile, descanso, celebración, escucha y habla mediante animaciones nativas o control procedural del rig.
 - Capa de movimiento preparada para mapear huesos del rig y controlar articulaciones desde JavaScript.
 - Personaje arrastrable horizontalmente en escritorio.
@@ -76,7 +76,7 @@ Usuario
         Voz + estados
 ```
 
-La capa de comportamiento está separada conceptualmente del cuerpo 3D. El visor expone el rig a la aplicación, y el bloque de respuesta local puede sustituirse o ampliarse con un motor de IA remoto o local sin rehacer el personaje.
+La capa de comportamiento está separada conceptualmente del cuerpo 3D. El runtime Three.js expone el rig a la aplicación, y el bloque de respuesta local puede sustituirse o ampliarse con un motor de IA remoto o local sin rehacer el personaje.
 
 ## Privacidad de esta beta
 
