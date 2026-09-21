@@ -28,6 +28,7 @@
     recognition: null,
     speechTimer: null,
     animationTimer: null,
+    speaking: false,
     currentState: "idle",
     profileName: store.get("profileName", "Spencer"),
     dragged: false,
@@ -325,6 +326,13 @@
     if (options.speak !== false) speak(message);
   }
 
+  function setSpeaking(active) {
+    state.speaking = Boolean(active);
+    if (window.Mei3D && typeof window.Mei3D.setSpeaking === "function") {
+      window.Mei3D.setSpeaking(state.speaking);
+    }
+  }
+
   function speak(message) {
     if (!state.sound || !("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
@@ -337,9 +345,33 @@
     utterance.lang = preferred ? preferred.lang : "es-CO";
     utterance.rate = 1.03;
     utterance.pitch = 1.08;
-    utterance.onstart = () => setState("speak");
-    utterance.onend = () => { if (state.currentState === "speak") setState("idle"); };
-    utterance.onerror = () => { if (state.currentState === "speak") setState("idle"); };
+
+    utterance.onstart = () => {
+      setSpeaking(true);
+      if (state.currentState === "idle") {
+        state.currentState = "speak";
+        els.character.className = "mei-character state-speak";
+        els.meiStateText.textContent = stateNames.speak;
+        els.statusText.textContent = "Mei hablando";
+        play3DMotion("speak");
+      } else {
+        els.meiStateText.textContent = stateNames.speak;
+        els.statusText.textContent = "Mei hablando";
+      }
+    };
+
+    const finishSpeech = () => {
+      setSpeaking(false);
+      if (state.currentState === "speak") {
+        setState("idle");
+      } else {
+        els.meiStateText.textContent = stateNames[state.currentState] || state.currentState;
+        els.statusText.textContent = state.currentState === "sleep" ? "Mei descansando" : state.currentState === "listen" ? "Mei escuchando" : "Mei disponible";
+      }
+    };
+
+    utterance.onend = finishSpeech;
+    utterance.onerror = finishSpeech;
     window.speechSynthesis.speak(utterance);
   }
 
