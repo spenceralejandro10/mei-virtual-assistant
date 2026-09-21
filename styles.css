@@ -176,18 +176,36 @@ body.light .glass{background:rgba(255,255,255,.76)}body.light .stage{background:
 }
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}}
 
-/* Mei photographic body — v0.1 identity integration */
-.mei-photo-body{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;transform-origin:50% 96%}
-.mei-photo{position:relative;z-index:2;width:100%;height:100%;object-fit:contain;object-position:center bottom;filter:drop-shadow(0 24px 26px rgba(0,0,0,.38));user-select:none;pointer-events:none}
-.mei-photo-glow{position:absolute;z-index:1;left:16%;right:16%;bottom:5%;height:70%;border-radius:50%;background:radial-gradient(circle,rgba(141,108,255,.18),transparent 68%);filter:blur(22px)}
-.state-idle .mei-photo-body{animation:idleBob 3.2s ease-in-out infinite}
-.state-wave .mei-photo-body{animation:photoWave .8s ease-in-out infinite alternate}
-.state-think .mei-photo-body{animation:thinkHead 1.4s ease-in-out infinite alternate}
-.state-dance .mei-photo-body{animation:danceBody .48s ease-in-out infinite alternate}
-.state-sleep .mei-photo-body{animation:sleepBody 2.5s ease-in-out infinite;transform:translateY(20px) rotate(5deg)}
-.state-celebrate .mei-photo-body{animation:celebrate .5s ease-in-out infinite alternate}
-.state-listen .mei-photo-body{animation:listenPhoto 1.4s ease-in-out infinite}
-.state-speak .mei-photo-body{animation:speakPhoto .5s ease-in-out infinite alternate}
-@keyframes photoWave{to{transform:rotate(2deg) translateY(-6px)}}
-@keyframes listenPhoto{50%{transform:scale(1.018)}}
-@keyframes speakPhoto{to{transform:translateY(-3px)}}
+
+/* Mei articulated body rig — movement-first prototype */
+.mei-rig{position:absolute;left:50%;bottom:20px;width:190px;height:365px;transform:translateX(-50%);transform-origin:50% 92%;--skin:#f2c6b3;--hair:#28212c;--cloth:#8067d8}
+.rig-hair-back{position:absolute;z-index:1;left:47px;top:18px;width:98px;height:155px;border-radius:52% 48% 44% 44%;background:var(--hair);transform-origin:50% 18%}
+.rig-head{position:absolute;z-index:8;left:57px;top:28px;width:78px;height:94px;transform-origin:50% 85%}
+.rig-face{position:absolute;inset:7px 6px 4px;border-radius:48% 48% 45% 45%;background:var(--skin);box-shadow:inset 0 -5px 0 rgba(176,100,90,.05)}
+.rig-hair-front{position:absolute;left:2px;top:0;width:75px;height:39px;border-radius:50% 50% 38% 20%;background:var(--hair);clip-path:polygon(0 0,100% 0,100% 60%,78% 45%,64% 78%,50% 43%,33% 74%,19% 43%,0 67%)}
+.rig-ear{position:absolute;z-index:-1;top:42px;width:12px;height:20px;border-radius:50%;background:var(--skin)}.rig-ear.left{left:0}.rig-ear.right{right:0}
+.rig-eye{position:absolute;top:38px;width:17px;height:9px;border-radius:50%;background:#fff;overflow:hidden;transform-origin:center}.rig-eye.left{left:13px}.rig-eye.right{right:13px}.rig-eye i{position:absolute;width:7px;height:7px;left:5px;top:1px;border-radius:50%;background:#4b3558}
+.rig-brow{position:absolute;top:29px;width:16px;height:2px;background:#4d3840;border-radius:4px}.rig-brow.left{left:13px;transform:rotate(-4deg)}.rig-brow.right{right:13px;transform:rotate(4deg)}
+.rig-nose{position:absolute;left:31px;top:50px;width:4px;height:7px;border-right:1px solid rgba(120,70,70,.35);transform:rotate(10deg)}
+.rig-mouth{position:absolute;left:26px;top:65px;width:15px;height:6px;border-bottom:2px solid #a75f68;border-radius:50%}
+.rig-neck{position:absolute;z-index:4;left:84px;top:111px;width:24px;height:28px;border-radius:8px;background:var(--skin)}
+.rig-torso{position:absolute;z-index:5;left:58px;top:130px;width:76px;height:112px;background:linear-gradient(160deg,#9c83ef,var(--cloth));border-radius:30px 30px 20px 20px;clip-path:polygon(14% 0,86% 0,100% 100%,0 100%)}
+.rig-torso:after{content:"";position:absolute;left:31px;top:0;width:14px;height:90px;border-radius:50%;border-right:1px solid rgba(255,255,255,.22)}
+.rig-arm{position:absolute;z-index:4;top:139px;width:25px;height:91px;background:var(--skin);border-radius:14px;transform-origin:50% 10%}.rig-arm-left{left:42px;transform:rotate(8deg)}.rig-arm-right{right:40px;transform:rotate(-8deg)}
+.rig-forearm{position:absolute;left:1px;top:66px;width:23px;height:78px;background:var(--skin);border-radius:13px;transform-origin:50% 8%}.rig-hand{position:absolute;left:-1px;bottom:-9px;width:25px;height:28px;border-radius:48%;background:var(--skin)}
+.rig-leg{position:absolute;z-index:3;top:231px;width:32px;height:105px;background:var(--skin);border-radius:13px 13px 16px 16px;transform-origin:50% 7%}.rig-leg-left{left:61px}.rig-leg-right{right:59px}
+.rig-shoe{position:absolute;bottom:-16px;width:43px;height:25px;background:#282238;border-radius:70% 40% 35% 25%}.rig-leg-left .rig-shoe{right:0}.rig-leg-right .rig-shoe{left:0;transform:scaleX(-1)}
+.rig-eye{animation:rigBlink 5.5s infinite}@keyframes rigBlink{0%,46%,49%,100%{transform:scaleY(1)}47%,48%{transform:scaleY(.08)}}
+.state-idle .mei-rig{animation:rigBreathe 2.8s ease-in-out infinite}@keyframes rigBreathe{50%{transform:translateX(-50%) translateY(-3px) scaleY(1.008)}}
+.state-idle .rig-head{animation:rigHeadIdle 4s ease-in-out infinite alternate}@keyframes rigHeadIdle{to{transform:rotate(2deg)}}
+.state-wave .rig-arm-right{animation:rigWaveUpper .5s ease-in-out infinite alternate}.state-wave .rig-arm-right .rig-forearm{animation:rigWaveFore .38s ease-in-out infinite alternate}
+@keyframes rigWaveUpper{to{transform:rotate(-145deg)}}@keyframes rigWaveFore{to{transform:rotate(-55deg)}}
+.state-think .rig-head{animation:rigThink 1.2s ease-in-out infinite alternate}.state-think .rig-arm-right{transform:rotate(-105deg)}.state-think .rig-arm-right .rig-forearm{transform:rotate(-65deg)}
+@keyframes rigThink{to{transform:rotate(9deg) translateY(-2px)}}
+.state-dance .mei-rig{animation:rigDance .45s ease-in-out infinite alternate}.state-dance .rig-arm-left{animation:rigDanceL .45s infinite alternate}.state-dance .rig-arm-right{animation:rigDanceR .45s infinite alternate}.state-dance .rig-leg-left{animation:rigLegL .45s infinite alternate}.state-dance .rig-leg-right{animation:rigLegR .45s infinite alternate}
+@keyframes rigDance{to{transform:translateX(-50%) translateY(-13px) rotate(4deg)}}@keyframes rigDanceL{to{transform:rotate(115deg)}}@keyframes rigDanceR{to{transform:rotate(-115deg)}}@keyframes rigLegL{to{transform:rotate(9deg)}}@keyframes rigLegR{to{transform:rotate(-9deg)}}
+.state-celebrate .rig-arm-left{transform:rotate(145deg)}.state-celebrate .rig-arm-right{transform:rotate(-145deg)}.state-celebrate .mei-rig{animation:rigJump .42s ease-in-out infinite alternate}@keyframes rigJump{to{transform:translateX(-50%) translateY(-22px)}}
+.state-sleep .mei-rig{animation:rigSleep 2.4s ease-in-out infinite}.state-sleep .rig-eye{animation:none;transform:scaleY(.08)}@keyframes rigSleep{50%{transform:translateX(-50%) translateY(18px) rotate(7deg)}}
+.state-listen .rig-head{animation:rigListen 1s ease-in-out infinite alternate}@keyframes rigListen{to{transform:rotate(-5deg)}}
+.state-speak .rig-mouth{animation:rigTalk .2s linear infinite alternate}@keyframes rigTalk{to{height:12px;border:2px solid #a75f68;background:#7d3948;border-radius:50%}}
+@media(max-width:720px){.mei-rig{transform:translateX(-50%) scale(.95)}}
