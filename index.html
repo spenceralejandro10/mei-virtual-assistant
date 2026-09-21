@@ -100,7 +100,7 @@
         <div class="mei-character state-idle" id="meiCharacter" role="button" tabindex="0" aria-label="Mei, asistente virtual">
           <div class="name-tag"><i></i> MEI</div>
           <div class="mei-3d-shell" aria-hidden="true">
-            <iframe id="mei3dFrame" title="Mei 3D" allow="autoplay; fullscreen; xr-spatial-tracking" allowfullscreen></iframe>
+            <canvas id="mei3dCanvas"></canvas>
             <div class="mei-3d-loading" id="mei3dLoading"><span></span> Cargando cuerpo 3D…</div>
           </div>
           <div class="activity-dots"><i></i><i></i><i></i></div>
@@ -128,7 +128,15 @@
   </div>
 
   <div class="toast-stack" id="toastStack"></div>
-  <script src="https://static.sketchfab.com/api/sketchfab-viewer-1.12.1.js"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="./mei-3d.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
