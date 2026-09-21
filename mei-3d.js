@@ -132,7 +132,7 @@ function fitCamera() {
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * Math.max(camera.aspect, 0.2));
   const fitHeight = (modelSize.y * 0.5) / Math.tan(verticalFov / 2);
   const fitWidth = (modelSize.x * 0.5) / Math.tan(horizontalFov / 2);
-  const distance = Math.max(fitHeight, fitWidth) * 1.08;
+  const distance = Math.max(fitHeight, fitWidth) * 1.13;
   const focusY = modelSize.y * 0.51;
 
   camera.position.set(0, focusY, distance);
