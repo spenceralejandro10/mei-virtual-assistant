@@ -5,12 +5,12 @@
 Migración del prototipo 2D/CSS a un cuerpo 3D riggeado real.
 
 ### Añadido
-- Integración del modelo Yinn como cuerpo 3D de Mei mediante Sketchfab Viewer API.
+- Integración del modelo Yinn como cuerpo 3D de Mei, convertido a GLB y servido localmente con Three.js.
 - Descubrimiento automático de huesos/nodos del rig.
 - Control procedural de cabeza, torso, brazos y piernas.
 - Soporte para animaciones nativas cuando el modelo las expone.
 - Estados 3D para saludo, pensamiento, baile, descanso, celebración, escucha y habla.
-- Indicador de carga del cuerpo 3D y fallback de error.
+- Indicador de carga del cuerpo 3D y fallback de error.\n- Eliminado el bloqueo de contenido restringido del visor externo al autoalojar el modelo.
 
 ### Cambiado
 - Mei deja de usar el cuerpo CSS provisional como representación principal.
